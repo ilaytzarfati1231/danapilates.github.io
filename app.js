@@ -12,7 +12,7 @@ function App() {
   const [newLessonData, setNewLessonData] = useState({ title: "", date: "", time: "", capacity: "" });
   const [user, setUser] = useState({ name: "", phone: "" });
 
-  const SCRIPT_URL = "YOUR_DEPLOYED_APPS_SCRIPT_URL"; // Replace with actual URL
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOcGX4vvFcteuF4IrwXd-v1K7BsWCNuU2KQ0bFYLRSoQMZmgmBgRyVIoNOw3lp0wDerA/exec";
 
   useEffect(() => {
     if (document.cookie.includes("admin=true")) setIsAdmin(true);
