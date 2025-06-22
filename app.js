@@ -11,6 +11,7 @@ function App() {
   const [lessons, setLessons] = useState([]);
   const [newLessonData, setNewLessonData] = useState({ title: "", date: "", time: "", capacity: "" });
   const [user, setUser] = useState({ name: "", phone: "" });
+  const [registerError, setRegisterError] = useState("");
 
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOcGX4vvFcteuF4IrwXd-v1K7BsWCNuU2KQ0bFYLRSoQMZmgmBgRyVIoNOw3lp0wDerA/exec";
 
@@ -46,6 +47,9 @@ function App() {
   };
 
   const handleRegister = async (lessonId) => {
+    console.log("Attempting to register for lesson ID:", lessonId);
+    setRegisterError("");
+
     if (!user.name || !user.phone) {
       alert("Please enter name and phone.");
       return;
@@ -58,6 +62,7 @@ function App() {
         body: JSON.stringify({ lessonId, name: user.name, phone: user.phone })
       });
       const text = await response.text();
+      console.log("Response from script:", text);
 
       if (text === "ALREADY_REGISTERED") {
         alert("You are already registered for this lesson.");
@@ -66,11 +71,13 @@ function App() {
         alert("Redirected to payment app. (Simulated)");
         fetchLessons();
       } else {
-        alert("Unexpected response: " + text);
+        setRegisterError("Unexpected server response: " + text);
+        alert("Unexpected server response: " + text);
       }
     } catch (err) {
       console.error("Registration failed:", err);
-      alert("An error occurred during registration.");
+      setRegisterError("Registration failed: " + err.message);
+      alert("An error occurred: " + err.message);
     }
   };
 
@@ -79,7 +86,8 @@ function App() {
       const lesson = lessons.find(l => l.id == viewingLessonId);
       if (!lesson) return <p>Lesson not found</p>;
 
-      const spotsLeft = lesson.capacity - JSON.parse(lesson["registrations JSON"] || "[]").length;
+      const registrations = JSON.parse(lesson["registrations JSON"] || "[]");
+      const spotsLeft = lesson.capacity - registrations.length;
       return (
         <div>
           <button onClick={() => { setViewingLessonId(null); setRegisterSuccess(false); }}>← Back</button>
@@ -87,6 +95,7 @@ function App() {
           <p>{lesson.datetime}</p>
           <p>Spots left: {spotsLeft}</p>
           {registerSuccess && <p style={{ color: "green" }}>✔️ Registered successfully!</p>}
+          {registerError && <p style={{ color: "red" }}>{registerError}</p>}
           <input placeholder="Your name" value={user.name} onChange={(e) => setUser({ ...user, name: e.target.value })} /><br/>
           <input placeholder="Phone number" value={user.phone} onChange={(e) => setUser({ ...user, phone: e.target.value })} /><br/>
           <button onClick={() => handleRegister(lesson.id)}>Register & Pay</button>
@@ -97,13 +106,16 @@ function App() {
     return (
       <div>
         <h2>Choose a Lesson to Register</h2>
-        {lessons.map((lesson) => (
-          <div key={lesson.id} style={{ border: "1px solid gray", padding: "8px", margin: "4px" }} onClick={() => setViewingLessonId(lesson.id)}>
-            <div><strong>{lesson.title}</strong></div>
-            <div>{lesson.datetime}</div>
-            <div>Capacity: {lesson.capacity}, Registered: {JSON.parse(lesson["registrations JSON"] || "[]").length}</div>
-          </div>
-        ))}
+        {lessons.map((lesson) => {
+          const registrations = JSON.parse(lesson["registrations JSON"] || "[]");
+          return (
+            <div key={lesson.id} style={{ border: "1px solid gray", padding: "8px", margin: "4px" }} onClick={() => setViewingLessonId(lesson.id)}>
+              <div><strong>{lesson.title}</strong></div>
+              <div>{lesson.datetime}</div>
+              <div>Capacity: {lesson.capacity}, Registered: {registrations.length}</div>
+            </div>
+          );
+        })}
       </div>
     );
   };
