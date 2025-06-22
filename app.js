@@ -13,6 +13,7 @@ function App() {
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOcGX4vvFcteuF4IrwXd-v1K7BsWCNuU2KQ0bFYLRSoQMZmgmBgRyVIoNOw3lp0wDerA/exec";
   const PROXY_URL = "https://corsproxy.io/?" + encodeURIComponent(SCRIPT_URL);
 
+  // 🔄 Fetch lessons on load
   useEffect(() => {
     if (document.cookie.includes("admin=true")) setIsAdmin(true);
     fetchLessons();
@@ -20,18 +21,29 @@ function App() {
 
   const fetchLessons = async () => {
     try {
-      console.log("Fetching lessons...");
+      console.log("📡 Fetching lessons from Google Sheets...");
       const res = await fetch(PROXY_URL);
       const data = await res.json();
-      console.log("Lessons fetched:", data);
-      setLessons(data);
+
+      const validData = data.map((lesson, index) => ({
+        id: lesson.id || (index + 1).toString(),
+        title: lesson.title || "Untitled",
+        datetime: lesson.datetime || "",
+        capacity: lesson.capacity || "0",
+        ["registrations JSON"]: lesson["registrations JSON"] || "[]"
+      }));
+
+      console.log("✅ Lessons loaded:", validData);
+      setLessons(validData);
     } catch (err) {
-      console.error("Failed to fetch lessons:", err);
-      alert("Couldn't load lessons. Please try again.");
+      console.error("❌ Lesson fetch failed:", err);
+      alert("Couldn't load lessons. Try again.");
+      setLessons([]);
     }
   };
 
   const handleLogin = () => {
+    fetchLessons(); // ⬅️ fetch on button press
     if (adminPassword === "admin123") {
       document.cookie = "admin=true";
       setIsAdmin(true);
@@ -42,12 +54,14 @@ function App() {
   };
 
   const handleLogout = () => {
+    fetchLessons(); // ⬅️ fetch on button press
     document.cookie = "admin=; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     setIsAdmin(false);
     setPage("home");
   };
 
   const handleRegister = async (lessonId) => {
+    fetchLessons(); // ⬅️ fetch on button press
     console.log("Registering to lesson ID:", lessonId);
     setRegisterError("");
 
@@ -80,6 +94,11 @@ function App() {
     }
   };
 
+  const handleNavClick = (targetPage) => {
+    setPage(targetPage);
+    fetchLessons(); // ⬅️ fetch on every nav button
+  };
+
   const renderRegister = () => {
     if (viewingLessonId) {
       const lesson = lessons.find(l => String(l.id) === String(viewingLessonId));
@@ -97,7 +116,7 @@ function App() {
 
       return (
         <div>
-          <button onClick={() => { setViewingLessonId(null); setRegisterSuccess(false); }}>← Back</button>
+          <button onClick={() => { setViewingLessonId(null); setRegisterSuccess(false); fetchLessons(); }}>← Back</button>
           <h2>Register for: {lesson.title}</h2>
           <p>{lesson.datetime}</p>
           <p>Spots left: {spotsLeft} / {capacity}</p>
@@ -109,6 +128,8 @@ function App() {
         </div>
       );
     }
+
+    if (!lessons.length) return <p>Loading lessons...</p>;
 
     return (
       <div>
@@ -126,7 +147,7 @@ function App() {
             <div
               key={lesson.id}
               style={{ border: "1px solid gray", padding: "8px", margin: "4px", cursor: "pointer" }}
-              onClick={() => setViewingLessonId(lesson.id)}
+              onClick={() => { setViewingLessonId(lesson.id); fetchLessons(); }}
             >
               <div><strong>{lesson.title}</strong></div>
               <div>{lesson.datetime}</div>
@@ -140,9 +161,9 @@ function App() {
 
   const renderNav = () => (
     <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-      <button onClick={() => setPage("home")}>Home</button>
-      <button onClick={() => setPage("register")}>Register</button>
-      <button onClick={() => setPage("admin")}>Admin</button>
+      <button onClick={() => handleNavClick("home")}>Home</button>
+      <button onClick={() => handleNavClick("register")}>Register</button>
+      <button onClick={() => handleNavClick("admin")}>Admin</button>
       {isAdmin && <button onClick={handleLogout}>Logout</button>}
     </div>
   );
