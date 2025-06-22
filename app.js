@@ -13,7 +13,7 @@ function App() {
   const [newLesson, setNewLesson] = useState({ title: "", datetime: "", capacity: "" });
 
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx5UWkyJ0WxFZI_bVA8l_Bj7u8KD__20y3C_oxVxJHMdB8m1Co2QtDj8KKjekvgrncI2g/exec";
-  const PROXY_URL = "https://corsproxy.io/?" + encodeURIComponent(SCRIPT_URL);
+  const PROXY_URL = SCRIPT_URL;
 
   useEffect(() => {
     if (document.cookie.includes("admin=true")) setIsAdmin(true);
