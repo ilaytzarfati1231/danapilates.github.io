@@ -1,5 +1,3 @@
-// Dana's Pilates Website - Fully Free Version using Google Sheets + Apps Script + Proxy Fix
-
 const { useState, useEffect } = React;
 
 function App() {
@@ -12,10 +10,7 @@ function App() {
   const [user, setUser] = useState({ name: "", phone: "" });
   const [registerError, setRegisterError] = useState("");
 
-  // Your actual Google Apps Script Web App URL
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOcGX4vvFcteuF4IrwXd-v1K7BsWCNuU2KQ0bFYLRSoQMZmgmBgRyVIoNOw3lp0wDerA/exec";
-
-  // CORS proxy to bypass GitHub Pages limitation
   const PROXY_URL = "https://corsproxy.io/?" + encodeURIComponent(SCRIPT_URL);
 
   useEffect(() => {
@@ -53,7 +48,7 @@ function App() {
   };
 
   const handleRegister = async (lessonId) => {
-    console.log("Attempting to register for lesson ID:", lessonId);
+    console.log("Registering to lesson ID:", lessonId);
     setRegisterError("");
 
     if (!user.name || !user.phone) {
@@ -64,29 +59,24 @@ function App() {
     try {
       const response = await fetch(PROXY_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lessonId, name: user.name, phone: user.phone })
       });
 
       const text = await response.text();
-      console.log("Response from script:", text);
+      console.log("Server response:", text);
 
       if (text === "ALREADY_REGISTERED") {
-        alert("You are already registered for this lesson.");
+        alert("You are already registered.");
       } else if (text === "OK") {
         setRegisterSuccess(true);
-        alert("Redirected to payment app. (Simulated)");
+        alert("Registered! Redirecting to payment app... (simulated)");
         fetchLessons();
       } else {
-        setRegisterError("Unexpected server response: " + text);
-        alert("Unexpected server response: " + text);
+        alert("Error: " + text);
       }
     } catch (err) {
-      console.error("Registration failed:", err);
-      setRegisterError("Registration failed: " + err.message);
-      alert("An error occurred: " + err.message);
+      alert("Network error: " + err.message);
     }
   };
 
@@ -174,8 +164,8 @@ function App() {
         </div>
       ) : (
         <div>
-          <p>All lesson data managed via Google Sheets backend.</p>
-          <p>To update lessons, use your Google Sheet manually or extend the script.</p>
+          <p>Lesson data is managed in Google Sheets.</p>
+          <button onClick={fetchLessons}>🔄 Reload Lessons</button>
         </div>
       )}
     </div>
