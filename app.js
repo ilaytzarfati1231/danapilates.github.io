@@ -20,9 +20,13 @@ function App() {
   }, []);
 
   const fetchLessons = async () => {
-    const res = await fetch(SCRIPT_URL);
-    const data = await res.json();
-    setLessons(data);
+    try {
+      const res = await fetch(SCRIPT_URL);
+      const data = await res.json();
+      setLessons(data);
+    } catch (err) {
+      console.error("Failed to fetch lessons:", err);
+    }
   };
 
   const handleLogin = () => {
@@ -47,19 +51,35 @@ function App() {
       return;
     }
 
-    await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId, name: user.name, phone: user.phone })
-    });
-    setRegisterSuccess(true);
-    alert("Redirected to payment app. (Simulated)");
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, name: user.name, phone: user.phone })
+      });
+      const text = await response.text();
+
+      if (text === "ALREADY_REGISTERED") {
+        alert("You are already registered for this lesson.");
+      } else if (text === "OK") {
+        setRegisterSuccess(true);
+        alert("Redirected to payment app. (Simulated)");
+        fetchLessons();
+      } else {
+        alert("Unexpected response: " + text);
+      }
+    } catch (err) {
+      console.error("Registration failed:", err);
+      alert("An error occurred during registration.");
+    }
   };
 
   const renderRegister = () => {
     if (viewingLessonId) {
       const lesson = lessons.find(l => l.id == viewingLessonId);
-      const spotsLeft = lesson.capacity - JSON.parse(lesson["registrations JSON"]).length;
+      if (!lesson) return <p>Lesson not found</p>;
+
+      const spotsLeft = lesson.capacity - JSON.parse(lesson["registrations JSON"] || "[]").length;
       return (
         <div>
           <button onClick={() => { setViewingLessonId(null); setRegisterSuccess(false); }}>← Back</button>
@@ -81,7 +101,7 @@ function App() {
           <div key={lesson.id} style={{ border: "1px solid gray", padding: "8px", margin: "4px" }} onClick={() => setViewingLessonId(lesson.id)}>
             <div><strong>{lesson.title}</strong></div>
             <div>{lesson.datetime}</div>
-            <div>Capacity: {lesson.capacity}, Registered: {JSON.parse(lesson["registrations JSON"]).length}</div>
+            <div>Capacity: {lesson.capacity}, Registered: {JSON.parse(lesson["registrations JSON"] || "[]").length}</div>
           </div>
         ))}
       </div>
