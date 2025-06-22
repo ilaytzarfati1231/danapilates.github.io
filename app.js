@@ -9,7 +9,6 @@ function App() {
   const [viewingLessonId, setViewingLessonId] = useState(null);
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [lessons, setLessons] = useState([]);
-  const [newLessonData, setNewLessonData] = useState({ title: "", date: "", time: "", capacity: "" });
   const [user, setUser] = useState({ name: "", phone: "" });
   const [registerError, setRegisterError] = useState("");
 
@@ -22,11 +21,14 @@ function App() {
 
   const fetchLessons = async () => {
     try {
+      console.log("Fetching lessons...");
       const res = await fetch(SCRIPT_URL);
       const data = await res.json();
+      console.log("Fetched lessons:", data);
       setLessons(data);
     } catch (err) {
       console.error("Failed to fetch lessons:", err);
+      alert("Failed to load lessons. Please try again.");
     }
   };
 
@@ -51,7 +53,7 @@ function App() {
     setRegisterError("");
 
     if (!user.name || !user.phone) {
-      alert("Please enter name and phone.");
+      alert("Please enter your name and phone.");
       return;
     }
 
@@ -61,6 +63,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lessonId, name: user.name, phone: user.phone })
       });
+
       const text = await response.text();
       console.log("Response from script:", text);
 
@@ -83,21 +86,29 @@ function App() {
 
   const renderRegister = () => {
     if (viewingLessonId) {
-      const lesson = lessons.find(l => l.id == viewingLessonId);
+      const lesson = lessons.find(l => String(l.id) === String(viewingLessonId));
       if (!lesson) return <p>Lesson not found</p>;
 
-      const registrations = JSON.parse(lesson["registrations JSON"] || "[]");
-      const spotsLeft = lesson.capacity - registrations.length;
+      let registrations = [];
+      try {
+        registrations = JSON.parse(lesson["registrations JSON"] || "[]");
+      } catch {
+        registrations = [];
+      }
+
+      const capacity = parseInt(lesson.capacity) || 0;
+      const spotsLeft = Math.max(0, capacity - registrations.length);
+
       return (
         <div>
           <button onClick={() => { setViewingLessonId(null); setRegisterSuccess(false); }}>← Back</button>
           <h2>Register for: {lesson.title}</h2>
           <p>{lesson.datetime}</p>
-          <p>Spots left: {spotsLeft}</p>
+          <p>Spots left: {spotsLeft} / {capacity}</p>
           {registerSuccess && <p style={{ color: "green" }}>✔️ Registered successfully!</p>}
           {registerError && <p style={{ color: "red" }}>{registerError}</p>}
-          <input placeholder="Your name" value={user.name} onChange={(e) => setUser({ ...user, name: e.target.value })} /><br/>
-          <input placeholder="Phone number" value={user.phone} onChange={(e) => setUser({ ...user, phone: e.target.value })} /><br/>
+          <input placeholder="Your name" value={user.name} onChange={(e) => setUser({ ...user, name: e.target.value })} /><br />
+          <input placeholder="Phone number" value={user.phone} onChange={(e) => setUser({ ...user, phone: e.target.value })} /><br />
           <button onClick={() => handleRegister(lesson.id)}>Register & Pay</button>
         </div>
       );
@@ -107,12 +118,23 @@ function App() {
       <div>
         <h2>Choose a Lesson to Register</h2>
         {lessons.map((lesson) => {
-          const registrations = JSON.parse(lesson["registrations JSON"] || "[]");
+          let registrations = [];
+          try {
+            registrations = JSON.parse(lesson["registrations JSON"] || "[]");
+          } catch {
+            registrations = [];
+          }
+
+          const capacity = parseInt(lesson.capacity) || 0;
           return (
-            <div key={lesson.id} style={{ border: "1px solid gray", padding: "8px", margin: "4px" }} onClick={() => setViewingLessonId(lesson.id)}>
+            <div
+              key={lesson.id}
+              style={{ border: "1px solid gray", padding: "8px", margin: "4px", cursor: "pointer" }}
+              onClick={() => setViewingLessonId(lesson.id)}
+            >
               <div><strong>{lesson.title}</strong></div>
               <div>{lesson.datetime}</div>
-              <div>Capacity: {lesson.capacity}, Registered: {registrations.length}</div>
+              <div>Capacity: {capacity}, Registered: {registrations.length}</div>
             </div>
           );
         })}
@@ -141,7 +163,7 @@ function App() {
       <h2>Admin Panel</h2>
       {!isAdmin ? (
         <div>
-          <input type="password" placeholder="Admin Password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} /><br/>
+          <input type="password" placeholder="Admin Password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} /><br />
           <button onClick={handleLogin}>Login</button>
         </div>
       ) : (
