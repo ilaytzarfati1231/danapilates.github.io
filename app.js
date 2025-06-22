@@ -12,7 +12,7 @@ function App() {
   const [registerError, setRegisterError] = useState("");
   const [newLesson, setNewLesson] = useState({ title: "", datetime: "", capacity: "" });
 
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOcGX4vvFcteuF4IrwXd-v1K7BsWCNuU2KQ0bFYLRSoQMZmgmBgRyVIoNOw3lp0wDerA/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx5UWkyJ0WxFZI_bVA8l_Bj7u8KD__20y3C_oxVxJHMdB8m1Co2QtDj8KKjekvgrncI2g/exec";
   const PROXY_URL = "https://corsproxy.io/?" + encodeURIComponent(SCRIPT_URL);
 
   useEffect(() => {
