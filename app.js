@@ -1,7 +1,6 @@
+// Dana's Pilates Website - Fully Free Version using Google Sheets + Apps Script
 
-// Dana's Pilates Website - Full functionality in plain React
-
-const { useState } = React;
+const { useState, useEffect } = React;
 
 function App() {
   const [page, setPage] = useState("home");
@@ -9,13 +8,26 @@ function App() {
   const [adminPassword, setAdminPassword] = useState("");
   const [viewingLessonId, setViewingLessonId] = useState(null);
   const [registerSuccess, setRegisterSuccess] = useState(false);
-
   const [lessons, setLessons] = useState([]);
   const [newLessonData, setNewLessonData] = useState({ title: "", date: "", time: "", capacity: "" });
   const [user, setUser] = useState({ name: "", phone: "" });
 
+  const SCRIPT_URL = "YOUR_DEPLOYED_APPS_SCRIPT_URL"; // Replace with actual URL
+
+  useEffect(() => {
+    if (document.cookie.includes("admin=true")) setIsAdmin(true);
+    fetchLessons();
+  }, []);
+
+  const fetchLessons = async () => {
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+    setLessons(data);
+  };
+
   const handleLogin = () => {
     if (adminPassword === "admin123") {
+      document.cookie = "admin=true";
       setIsAdmin(true);
       setPage("admin");
     } else {
@@ -23,104 +35,38 @@ function App() {
     }
   };
 
-  const addLesson = () => {
-    if (newLessonData.title && newLessonData.date && newLessonData.time && newLessonData.capacity) {
-      setLessons([
-        ...lessons,
-        {
-          id: Date.now(),
-          title: newLessonData.title,
-          datetime: `${newLessonData.date} ${newLessonData.time}`,
-          capacity: parseInt(newLessonData.capacity),
-          registrations: []
-        }
-      ]);
-      setNewLessonData({ title: "", date: "", time: "", capacity: "" });
+  const handleLogout = () => {
+    document.cookie = "admin=; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    setIsAdmin(false);
+    setPage("home");
+  };
+
+  const handleRegister = async (lessonId) => {
+    if (!user.name || !user.phone) {
+      alert("Please enter name and phone.");
+      return;
     }
-  };
 
-  const removeLesson = (id) => {
-    setLessons(lessons.filter((l) => l.id !== id));
-  };
-
-  const handleRegister = (lessonId) => {
-    if (user.name && user.phone) {
-      let alreadyRegistered = false;
-      const updatedLessons = lessons.map((lesson) => {
-        if (lesson.id === lessonId) {
-          if (lesson.registrations.length >= lesson.capacity) {
-            alert("This class is full.");
-            return lesson;
-          }
-
-          alreadyRegistered = lesson.registrations.some(
-            (r) => r.name === user.name && r.phone === user.phone
-          );
-
-          if (alreadyRegistered) {
-            alert("You have already registered for this lesson.");
-            return lesson;
-          }
-
-          const updated = {
-            ...lesson,
-            registrations: [...lesson.registrations, { name: user.name, phone: user.phone, paid: false }],
-          };
-
-          setRegisterSuccess(true);
-          return updated;
-        }
-        return lesson;
-      });
-
-      if (!alreadyRegistered) {
-        setLessons(updatedLessons);
-        alert("Redirected to payment. (Simulated)");
-      }
-    } else {
-      alert("Please enter name and phone number.");
-    }
-  };
-
-  const togglePaymentStatus = (lessonId, index) => {
-    const updatedLessons = lessons.map((lesson) => {
-      if (lesson.id === lessonId) {
-        const updatedRegistrations = [...lesson.registrations];
-        updatedRegistrations[index].paid = !updatedRegistrations[index].paid;
-        return { ...lesson, registrations: updatedRegistrations };
-      }
-      return lesson;
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, name: user.name, phone: user.phone })
     });
-    setLessons(updatedLessons);
-  };
-
-  const exportCSV = (lesson) => {
-    const csvContent = [
-      ["Name", "Phone", "Payment Status"],
-      ...lesson.registrations.map((r) => [r.name, r.phone, r.paid ? "Paid" : "Unpaid"]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", lesson.title.replace(/\s+/g, "_") + "_registrations.csv");
-    link.click();
+    setRegisterSuccess(true);
+    alert("Redirected to payment app. (Simulated)");
   };
 
   const renderRegister = () => {
-    if (viewingLessonId !== null) {
-      const lesson = lessons.find(l => l.id === viewingLessonId);
-      const spotsLeft = lesson.capacity - lesson.registrations.length;
+    if (viewingLessonId) {
+      const lesson = lessons.find(l => l.id == viewingLessonId);
+      const spotsLeft = lesson.capacity - JSON.parse(lesson["registrations JSON"]).length;
       return (
         <div>
           <button onClick={() => { setViewingLessonId(null); setRegisterSuccess(false); }}>← Back</button>
           <h2>Register for: {lesson.title}</h2>
           <p>{lesson.datetime}</p>
           <p>Spots left: {spotsLeft}</p>
-          {registerSuccess && <p className="success">✔️ Registered successfully!</p>}
+          {registerSuccess && <p style={{ color: "green" }}>✔️ Registered successfully!</p>}
           <input placeholder="Your name" value={user.name} onChange={(e) => setUser({ ...user, name: e.target.value })} /><br/>
           <input placeholder="Phone number" value={user.phone} onChange={(e) => setUser({ ...user, phone: e.target.value })} /><br/>
           <button onClick={() => handleRegister(lesson.id)}>Register & Pay</button>
@@ -132,10 +78,10 @@ function App() {
       <div>
         <h2>Choose a Lesson to Register</h2>
         {lessons.map((lesson) => (
-          <div key={lesson.id} className="card" onClick={() => setViewingLessonId(lesson.id)}>
+          <div key={lesson.id} style={{ border: "1px solid gray", padding: "8px", margin: "4px" }} onClick={() => setViewingLessonId(lesson.id)}>
             <div><strong>{lesson.title}</strong></div>
             <div>{lesson.datetime}</div>
-            <div>Capacity: {lesson.capacity}, Registered: {lesson.registrations.length}</div>
+            <div>Capacity: {lesson.capacity}, Registered: {JSON.parse(lesson["registrations JSON"]).length}</div>
           </div>
         ))}
       </div>
@@ -143,10 +89,11 @@ function App() {
   };
 
   const renderNav = () => (
-    <div className="flex">
+    <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
       <button onClick={() => setPage("home")}>Home</button>
       <button onClick={() => setPage("register")}>Register</button>
       <button onClick={() => setPage("admin")}>Admin</button>
+      {isAdmin && <button onClick={handleLogout}>Logout</button>}
     </div>
   );
 
@@ -167,36 +114,15 @@ function App() {
         </div>
       ) : (
         <div>
-          <input placeholder="Lesson title" value={newLessonData.title} onChange={(e) => setNewLessonData({ ...newLessonData, title: e.target.value })} /><br/>
-          <input placeholder="Date (YYYY-MM-DD)" value={newLessonData.date} onChange={(e) => setNewLessonData({ ...newLessonData, date: e.target.value })} /><br/>
-          <input placeholder="Time (HH:MM)" value={newLessonData.time} onChange={(e) => setNewLessonData({ ...newLessonData, time: e.target.value })} /><br/>
-          <input placeholder="Capacity" type="number" value={newLessonData.capacity} onChange={(e) => setNewLessonData({ ...newLessonData, capacity: e.target.value })} /><br/>
-          <button onClick={addLesson}>Add Lesson</button>
-
-          {lessons.map((lesson) => (
-            <div key={lesson.id} className="card">
-              <div><strong>{lesson.title}</strong></div>
-              <div>{lesson.datetime}</div>
-              <div>Capacity: {lesson.capacity}, Registered: {lesson.registrations.length}</div>
-              <button onClick={() => exportCSV(lesson)}>Export CSV</button>
-              <button onClick={() => removeLesson(lesson.id)}>Remove</button>
-              <div>
-                <h4>Registrations:</h4>
-                {lesson.registrations.map((r, i) => (
-                  <div key={i} onClick={() => togglePaymentStatus(lesson.id, i)}>
-                    {r.name} ({r.phone}) - <span className={r.paid ? "paid" : "unpaid"}>{r.paid ? "Paid" : "Unpaid"}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+          <p>All lesson data managed via Google Sheets backend.</p>
+          <p>To update lessons, use your Google Sheet manually or extend the script.</p>
         </div>
       )}
     </div>
   );
 
   return (
-    <div>
+    <div style={{ padding: "20px" }}>
       {renderNav()}
       {page === "home" && renderHome()}
       {page === "register" && renderRegister()}
