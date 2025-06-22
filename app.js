@@ -1,3 +1,4 @@
+// ✅ Dana's Pilates - Fixed App with Add Lesson (Admin) and Lesson Fetch Fix
 const { useState, useEffect } = React;
 
 function App() {
@@ -9,11 +10,11 @@ function App() {
   const [lessons, setLessons] = useState([]);
   const [user, setUser] = useState({ name: "", phone: "" });
   const [registerError, setRegisterError] = useState("");
+  const [newLesson, setNewLesson] = useState({ title: "", datetime: "", capacity: "" });
 
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOcGX4vvFcteuF4IrwXd-v1K7BsWCNuU2KQ0bFYLRSoQMZmgmBgRyVIoNOw3lp0wDerA/exec";
   const PROXY_URL = "https://corsproxy.io/?" + encodeURIComponent(SCRIPT_URL);
 
-  // 🔄 Fetch lessons on load
   useEffect(() => {
     if (document.cookie.includes("admin=true")) setIsAdmin(true);
     fetchLessons();
@@ -21,29 +22,26 @@ function App() {
 
   const fetchLessons = async () => {
     try {
-      console.log("📡 Fetching lessons from Google Sheets...");
       const res = await fetch(PROXY_URL);
       const data = await res.json();
 
       const validData = data.map((lesson, index) => ({
         id: lesson.id || (index + 1).toString(),
-        title: lesson.title || "Untitled",
-        datetime: lesson.datetime || "",
-        capacity: lesson.capacity || "0",
-        ["registrations JSON"]: lesson["registrations JSON"] || "[]"
+        title: lesson.title || lesson["Title"] || "Untitled",
+        datetime: lesson.datetime || lesson["Datetime"] || "",
+        capacity: lesson.capacity || lesson["Capacity"] || "0",
+        ["registrations JSON"]: lesson["registrations JSON"] || lesson["Registrations JSON"] || "[]"
       }));
 
-      console.log("✅ Lessons loaded:", validData);
       setLessons(validData);
     } catch (err) {
-      console.error("❌ Lesson fetch failed:", err);
       alert("Couldn't load lessons. Try again.");
       setLessons([]);
     }
   };
 
   const handleLogin = () => {
-    fetchLessons(); // ⬅️ fetch on button press
+    fetchLessons();
     if (adminPassword === "admin123") {
       document.cookie = "admin=true";
       setIsAdmin(true);
@@ -54,32 +52,26 @@ function App() {
   };
 
   const handleLogout = () => {
-    fetchLessons(); // ⬅️ fetch on button press
+    fetchLessons();
     document.cookie = "admin=; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     setIsAdmin(false);
     setPage("home");
   };
 
   const handleRegister = async (lessonId) => {
-    fetchLessons(); // ⬅️ fetch on button press
-    console.log("Registering to lesson ID:", lessonId);
+    fetchLessons();
     setRegisterError("");
-
     if (!user.name || !user.phone) {
       alert("Please enter your name and phone.");
       return;
     }
-
     try {
       const response = await fetch(PROXY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lessonId, name: user.name, phone: user.phone })
       });
-
       const text = await response.text();
-      console.log("Server response:", text);
-
       if (text === "ALREADY_REGISTERED") {
         alert("You are already registered.");
       } else if (text === "OK") {
@@ -94,9 +86,33 @@ function App() {
     }
   };
 
-  const handleNavClick = (targetPage) => {
-    setPage(targetPage);
-    fetchLessons(); // ⬅️ fetch on every nav button
+  const handleAddLesson = async () => {
+    if (!newLesson.title || !newLesson.datetime || !newLesson.capacity) {
+      alert("Fill in all lesson fields.");
+      return;
+    }
+    try {
+      const response = await fetch(PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "addLesson",
+          title: newLesson.title,
+          datetime: newLesson.datetime,
+          capacity: newLesson.capacity
+        })
+      });
+      const text = await response.text();
+      if (text === "OK") {
+        alert("Lesson added.");
+        setNewLesson({ title: "", datetime: "", capacity: "" });
+        fetchLessons();
+      } else {
+        alert("Error: " + text);
+      }
+    } catch (err) {
+      alert("Add lesson error: " + err.message);
+    }
   };
 
   const renderRegister = () => {
@@ -107,9 +123,7 @@ function App() {
       let registrations = [];
       try {
         registrations = JSON.parse(lesson["registrations JSON"] || "[]");
-      } catch {
-        registrations = [];
-      }
+      } catch {}
 
       const capacity = parseInt(lesson.capacity) || 0;
       const spotsLeft = Math.max(0, capacity - registrations.length);
@@ -138,9 +152,7 @@ function App() {
           let registrations = [];
           try {
             registrations = JSON.parse(lesson["registrations JSON"] || "[]");
-          } catch {
-            registrations = [];
-          }
+          } catch {}
 
           const capacity = parseInt(lesson.capacity) || 0;
           return (
@@ -161,9 +173,9 @@ function App() {
 
   const renderNav = () => (
     <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-      <button onClick={() => handleNavClick("home")}>Home</button>
-      <button onClick={() => handleNavClick("register")}>Register</button>
-      <button onClick={() => handleNavClick("admin")}>Admin</button>
+      <button onClick={() => setPage("home")}>Home</button>
+      <button onClick={() => setPage("register")}>Register</button>
+      <button onClick={() => setPage("admin")}>Admin</button>
       {isAdmin && <button onClick={handleLogout}>Logout</button>}
     </div>
   );
@@ -187,6 +199,12 @@ function App() {
         <div>
           <p>Lesson data is managed in Google Sheets.</p>
           <button onClick={fetchLessons}>🔄 Reload Lessons</button>
+
+          <h3>Add New Lesson</h3>
+          <input placeholder="Title" value={newLesson.title} onChange={(e) => setNewLesson({ ...newLesson, title: e.target.value })} /><br />
+          <input placeholder="Datetime" value={newLesson.datetime} onChange={(e) => setNewLesson({ ...newLesson, datetime: e.target.value })} /><br />
+          <input placeholder="Capacity" value={newLesson.capacity} onChange={(e) => setNewLesson({ ...newLesson, capacity: e.target.value })} /><br />
+          <button onClick={handleAddLesson}>➕ Add Lesson</button>
         </div>
       )}
     </div>
