@@ -1,4 +1,4 @@
-// Dana's Pilates Website - Fully Free Version using Google Sheets + Apps Script
+// Dana's Pilates Website - Fully Free Version using Google Sheets + Apps Script + Proxy Fix
 
 const { useState, useEffect } = React;
 
@@ -12,7 +12,11 @@ function App() {
   const [user, setUser] = useState({ name: "", phone: "" });
   const [registerError, setRegisterError] = useState("");
 
+  // Your actual Google Apps Script Web App URL
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOcGX4vvFcteuF4IrwXd-v1K7BsWCNuU2KQ0bFYLRSoQMZmgmBgRyVIoNOw3lp0wDerA/exec";
+
+  // CORS proxy to bypass GitHub Pages limitation
+  const PROXY_URL = "https://corsproxy.io/?" + encodeURIComponent(SCRIPT_URL);
 
   useEffect(() => {
     if (document.cookie.includes("admin=true")) setIsAdmin(true);
@@ -22,13 +26,13 @@ function App() {
   const fetchLessons = async () => {
     try {
       console.log("Fetching lessons...");
-      const res = await fetch(SCRIPT_URL);
+      const res = await fetch(PROXY_URL);
       const data = await res.json();
-      console.log("Fetched lessons:", data);
+      console.log("Lessons fetched:", data);
       setLessons(data);
     } catch (err) {
       console.error("Failed to fetch lessons:", err);
-      alert("Failed to load lessons. Please try again.");
+      alert("Couldn't load lessons. Please try again.");
     }
   };
 
@@ -58,9 +62,11 @@ function App() {
     }
 
     try {
-      const response = await fetch(SCRIPT_URL, {
+      const response = await fetch(PROXY_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({ lessonId, name: user.name, phone: user.phone })
       });
 
